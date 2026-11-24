@@ -38,6 +38,7 @@ Copy `.env.example` to `.env.local` and set the values below.
 | Variable               | Required          | Exposure            | Purpose                                                                                                                              |
 | ---------------------- | ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `NEXT_PUBLIC_SITE_URL` | Production        | Public              | Canonical origin used for metadata and sitemap. Use the verified production domain; the example fallback is not a real ATLaS domain. |
+| `TRUST_X_FORWARDED_FOR` | Optional          | Server only         | Set to `true` only when a trusted reverse proxy sanitizes `X-Forwarded-For` and direct access to the app server is blocked. Otherwise in-process limits use a shared fallback key. |
 | `RESEND_API_KEY`       | To send inquiries | Secret, server only | Resend API credential. Never prefix this with `NEXT_PUBLIC_`.                                                                        |
 | `CONTACT_TO_EMAIL`     | To send inquiries | Server only         | Verified business inbox receiving project inquiries.                                                                                 |
 | `CONTACT_FROM_EMAIL`   | To send inquiries | Server only         | Sender identity verified with the email provider.                                                                                    |
@@ -51,6 +52,8 @@ The site uses SQLite to store portfolio entries and contact inquiries. It does n
 ## Contact delivery and spam controls
 
 The `/api/contact` endpoint validates all fields with Zod, limits JSON request size to 12 KB, uses a hidden honeypot field, and applies an in-memory limit of five attempts per IP address per 15 minutes. In-memory rate limits reset when the server restarts and are not shared across serverless instances. For a high-traffic or multi-instance deployment, place a trusted edge/WAF rate limit in front of the endpoint. The app does not claim persistent lead storage or visitor confirmation email.
+
+The login endpoint limits request bodies to 4 KB and applies an in-memory limit of eight failed attempts per address per 15 minutes. Admin JSON mutation requests are limited to 4 KB, and multipart uploads are capped at 20.5 MB before form parsing. Forwarded addresses are ignored unless `TRUST_X_FORWARDED_FOR=true`; only enable it when the trusted reverse proxy sanitizes the header and direct access to the app server is blocked. If it is unset or false, all requests share one in-process limit key. These in-process limits are a secondary safeguard; enforce shared limits at the edge for production and multi-instance deployments.
 
 The endpoint saves each valid inquiry before attempting email delivery, so the admin dashboard remains the source of record if email is not configured or delivery fails. It does not log the full inquiry or expose provider details to the visitor. The dashboard is available at `/admin/login`; configure the admin username, password and session secret before launch.
 
@@ -86,6 +89,8 @@ Deploy as a Node.js Next.js application on a host that supports the installed Ne
 ## Privacy and security notes
 
 The project sets `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and a restrictive `Permissions-Policy` header. HTTPS must be configured by the deployment host. There are no third-party tracking scripts or analytics cookies. Privacy and terms copy is general starter text and should be reviewed against actual business practice and applicable requirements before production use.
+
+Production responses also set a Content Security Policy and HSTS. Review the policy if adding third-party scripts, fonts, image hosts or APIs; admin pages use `Cache-Control: private, no-store`.
 
 ## Troubleshooting
 

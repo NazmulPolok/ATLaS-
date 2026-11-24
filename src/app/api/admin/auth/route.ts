@@ -6,6 +6,12 @@ import {
   isAdmin,
   verifyAdminCredentials,
 } from "@/lib/admin-auth";
+import {
+  clientAddress,
+  consumeRateLimit,
+  readLimitedJson,
+  RequestBodyTooLargeError,
+} from "@/lib/request-security";
 
 export const runtime = "nodejs";
 const failedLogins = new Map<string, number[]>();
@@ -30,21 +36,22 @@ export async function POST(request: NextRequest) {
       },
       { status: 503 },
     );
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const ip = clientAddress(request.headers);
   const now = Date.now();
-  const attempts = (failedLogins.get(ip) || []).filter(
-    (time) => now - time < 15 * 60 * 1000,
-  );
-  if (attempts.length >= 8)
+  if (!consumeRateLimit(failedLogins, ip, now, 15 * 60 * 1000, 8))
     return NextResponse.json(
       { error: "Too many login attempts. Wait 15 minutes and try again." },
       { status: 429 },
     );
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
+    body = await readLimitedJson(request, 4_096);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError)
+      return NextResponse.json(
+        { error: "Request body is too large." },
+        { status: 413 },
+      );
     return NextResponse.json(
       { error: "Enter a username and password." },
       { status: 400 },
@@ -60,8 +67,6 @@ export async function POST(request: NextRequest) {
     password.length > 300 ||
     !verifyAdminCredentials(username, password)
   ) {
-    attempts.push(now);
-    failedLogins.set(ip, attempts);
     return NextResponse.json(
       { error: "The username or password is incorrect." },
       { status: 401 },

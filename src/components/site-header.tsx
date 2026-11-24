@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 import { navItems, services } from "@/content/site";
 
@@ -27,12 +27,16 @@ function Brand() {
 export function SiteHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
   const close = () => setOpen(false);
   return (
     <header
       className="site-header"
       onKeyDown={(event) => {
-        if (event.key === "Escape") close();
+        if (event.key === "Escape" && open) {
+          close();
+          menuButton.current?.focus();
+        }
       }}
     >
       <div className="container header-inner">
@@ -66,6 +70,7 @@ export function SiteHeader() {
           Start a project <ArrowUpRight size={15} />
         </Link>
         <button
+          ref={menuButton}
           className="menu-toggle"
           onClick={() => setOpen(!open)}
           aria-label={open ? "Close navigation menu" : "Open navigation menu"}

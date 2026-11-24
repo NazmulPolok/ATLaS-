@@ -2,26 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { inquirySchema } from "@/lib/contact-schema";
 import { saveInquiry, setInquiryEmailStatus } from "@/lib/admin-store";
+import { clientAddress, consumeRateLimit } from "@/lib/request-security";
 
 export const runtime = "nodejs";
 const attempts = new Map<string, number[]>();
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_REQUESTS = 5;
-function allowed(ip: string, now: number) {
-  const current = (attempts.get(ip) || []).filter(
-    (time) => now - time < WINDOW_MS,
-  );
-  if (current.length >= MAX_REQUESTS) {
-    attempts.set(ip, current);
-    return false;
-  }
-  current.push(now);
-  attempts.set(ip, current);
-  if (attempts.size > 1000)
-    for (const [key, times] of attempts)
-      if (times.every((time) => now - time >= WINDOW_MS)) attempts.delete(key);
-  return true;
-}
 function text(value: string) {
   return value.replace(/[\r\n\u0000-\u001f\u007f]/g, " ").trim();
 }
@@ -33,9 +19,8 @@ export async function POST(request: NextRequest) {
       { error: "This inquiry is too large. Please shorten it and try again." },
       { status: 413 },
     );
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (!allowed(ip, Date.now()))
+  const ip = clientAddress(request.headers);
+  if (!consumeRateLimit(attempts, ip, Date.now(), WINDOW_MS, MAX_REQUESTS))
     return NextResponse.json(
       { error: "Too many attempts. Please wait a little before trying again." },
       { status: 429 },
@@ -102,6 +87,7 @@ export async function POST(request: NextRequest) {
       budget: inquiry.budget,
       timeline: inquiry.timeline,
       description: inquiry.description,
+      privacyAcknowledged: inquiry.privacy,
     });
   } catch {
     console.error("Contact inquiry could not be saved");
@@ -123,12 +109,14 @@ export async function POST(request: NextRequest) {
   }
   const body = [
     `New project inquiry for ATLaS`,
+    `Inquiry ID: ${inquiryId}`,
     `Name: ${text(inquiry.name)}`,
     `Email: ${text(inquiry.email)}`,
     `Company: ${text(inquiry.company) || "Not provided"}`,
     `Project type: ${inquiry.projectType}`,
     `Budget: ${inquiry.budget || "Not provided"}`,
     `Timeline: ${inquiry.timeline || "Not provided"}`,
+    `Privacy acknowledgement: ${inquiry.privacy ? "Yes" : "No"}`,
     "",
     "Project description:",
     text(inquiry.description),

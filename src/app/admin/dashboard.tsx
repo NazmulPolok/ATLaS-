@@ -545,6 +545,9 @@ export function AdminDashboard({
                     <span>Budget: {item.budget || "Not specified"}</span>
                     <span>Timeline: {item.timeline || "Not specified"}</span>
                     <span>
+                      Privacy acknowledgement: {item.privacyAcknowledged ? "Yes" : "No"}
+                    </span>
+                    <span>
                       Email notification:{" "}
                       {item.emailStatus.replaceAll("_", " ")}
                     </span>
