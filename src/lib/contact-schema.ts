@@ -11,33 +11,31 @@ export const projectTypes = [
   "Website maintenance",
   "Other",
 ] as const;
+
 export const inquirySchema = z.object({
-  name: z.string().trim().min(2).max(100),
-  email: z.string().trim().email().max(254),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Full name must be at least 2 characters")
+    .max(100, "Name is too long"),
+  email: z
+    .string()
+    .trim()
+    .email("Please enter a valid email address")
+    .max(254),
   company: z.string().trim().max(120).optional().default(""),
-  projectType: z.enum(projectTypes),
-  budget: z
-    .enum([
-      "",
-      "Under $1,000",
-      "$1,000–$5,000",
-      "$5,000–$15,000",
-      "$15,000+",
-      "Not sure yet",
-    ])
-    .optional()
-    .default(""),
-  timeline: z
-    .enum([
-      "",
-      "As soon as possible",
-      "Within 1–3 months",
-      "Within 3–6 months",
-      "Flexible",
-    ])
-    .optional()
-    .default(""),
-  description: z.string().trim().min(20).max(4000),
+  projectType: z.enum(projectTypes, {
+    message: "Please select a valid project type",
+  }),
+  budget: z.string().max(100).optional().default(""),
+  timeline: z.string().max(100).optional().default(""),
+  description: z
+    .string()
+    .trim()
+    .min(10, "Please describe your project in at least 10 characters")
+    .max(4000, "Description is too long"),
   privacy: z.boolean().refine((v) => v, "Privacy acknowledgement is required"),
   website: z.string().max(200).optional().default(""),
 });
+
+export type InquiryInput = z.infer<typeof inquirySchema>;

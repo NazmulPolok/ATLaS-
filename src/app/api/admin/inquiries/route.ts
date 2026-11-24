@@ -15,7 +15,7 @@ export const runtime = "nodejs";
 export async function GET() {
   if (!(await isAdmin()))
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  return NextResponse.json({ inquiries: listInquiries() });
+  return NextResponse.json({ inquiries: await listInquiries() });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -41,7 +41,7 @@ export async function PATCH(request: NextRequest) {
       { error: "Inquiry details are invalid." },
       { status: 400 },
     );
-  markInquiryRead(Number(id), isRead);
+  await markInquiryRead(Number(id), isRead);
   return NextResponse.json({ message: "Inquiry updated." });
 }
 
@@ -66,7 +66,7 @@ export async function DELETE(request: NextRequest) {
       { error: "Inquiry id is invalid." },
       { status: 400 },
     );
-  if (!deleteInquiry(id))
+  if (!(await deleteInquiry(id)))
     return NextResponse.json({ error: "Inquiry not found." }, { status: 404 });
   return NextResponse.json({ message: "Inquiry deleted." });
 }

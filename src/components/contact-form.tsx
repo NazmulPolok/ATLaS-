@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { ArrowUpRight, LoaderCircle } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, LoaderCircle } from "lucide-react";
 
 import { projectTypes } from "@/lib/contact-schema";
 const budgets = [
@@ -59,19 +59,22 @@ export function ContactForm() {
   if (state === "success")
     return (
       <div className="form-status form-success" role="status">
-        <span className="status-mark">✓</span>
-        <div>
+        <div className="status-mark">
+          <CheckCircle2 size={24} strokeWidth={2.2} />
+        </div>
+        <div className="status-content">
           <h2>Message received.</h2>
           <p>{message}</p>
           <button
-            className="text-link"
+            className="form-success-button"
             type="button"
             onClick={() => {
               setState("idle");
               setMessage("");
             }}
           >
-            Send another inquiry <ArrowUpRight size={15} />
+            <span>Send another inquiry</span>
+            <ArrowUpRight size={16} />
           </button>
         </div>
       </div>

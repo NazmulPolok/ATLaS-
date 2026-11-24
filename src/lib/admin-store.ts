@@ -2,6 +2,14 @@ import "server-only";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import {
+  isNeonConfigured,
+  saveNeonInquiry,
+  setNeonInquiryEmailStatus,
+  listNeonInquiries,
+  markNeonInquiryRead,
+  deleteNeonInquiry,
+} from "./neon";
 
 export type EntryKind = "work" | "product";
 export type EntryImage = {
@@ -138,7 +146,7 @@ function inquiry(row: Record<string, unknown>): Inquiry {
   };
 }
 
-export function saveInquiry(data: {
+export async function saveInquiry(data: {
   name: string;
   email: string;
   company: string;
@@ -147,7 +155,10 @@ export function saveInquiry(data: {
   timeline: string;
   description: string;
   privacyAcknowledged: boolean;
-}) {
+}): Promise<number> {
+  if (isNeonConfigured()) {
+    return saveNeonInquiry(data);
+  }
   const result = database()
     .prepare(
       `INSERT INTO inquiries
@@ -158,13 +169,22 @@ export function saveInquiry(data: {
   return Number(result.lastInsertRowid);
 }
 
-export function setInquiryEmailStatus(id: number, status: string) {
+export async function setInquiryEmailStatus(
+  id: number,
+  status: string,
+): Promise<void> {
+  if (isNeonConfigured()) {
+    return setNeonInquiryEmailStatus(id, status);
+  }
   database()
     .prepare("UPDATE inquiries SET email_status = ? WHERE id = ?")
     .run(status, id);
 }
 
-export function listInquiries() {
+export async function listInquiries(): Promise<Inquiry[]> {
+  if (isNeonConfigured()) {
+    return listNeonInquiries();
+  }
   return (
     database()
       .prepare("SELECT * FROM inquiries ORDER BY created_at DESC, id DESC")
@@ -172,13 +192,22 @@ export function listInquiries() {
   ).map(inquiry);
 }
 
-export function markInquiryRead(id: number, isRead: boolean) {
+export async function markInquiryRead(
+  id: number,
+  isRead: boolean,
+): Promise<void> {
+  if (isNeonConfigured()) {
+    return markNeonInquiryRead(id, isRead);
+  }
   database()
     .prepare("UPDATE inquiries SET is_read = ? WHERE id = ?")
     .run(isRead ? 1 : 0, id);
 }
 
-export function deleteInquiry(id: number) {
+export async function deleteInquiry(id: number): Promise<boolean> {
+  if (isNeonConfigured()) {
+    return deleteNeonInquiry(id);
+  }
   return (
     database().prepare("DELETE FROM inquiries WHERE id = ?").run(id).changes > 0
   );

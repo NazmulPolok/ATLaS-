@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { UploadCloud, Trash2 } from "lucide-react";
 import type { ContentEntry, EntryImage, Inquiry } from "@/lib/admin-store";
 
 type PreviewImage = { file: File; url: string };
@@ -45,6 +46,8 @@ export function AdminDashboard({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<"all" | "work" | "product">("all");
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedPreviews = useMemo<PreviewImage[]>(
     () =>
@@ -305,22 +308,61 @@ export function AdminDashboard({
                   }
                 />
               </label>
-              <label>
-                Project images{" "}
-                <span className="admin-field-hint">
-                  Choose up to 5 JPG, PNG, WebP or GIF files. Maximum 5 MB each
-                  and 20 MB total.
-                </span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  multiple
-                  onChange={(event) => {
-                    appendFiles(event.currentTarget.files);
-                    event.currentTarget.value = "";
+              <div className="admin-file-upload-section">
+                <div className="admin-file-upload-header">
+                  <span className="admin-file-upload-title">Project images</span>
+                  <span className="admin-field-hint">
+                    Choose up to 5 JPG, PNG, WebP or GIF files. Max 5 MB each.
+                  </span>
+                </div>
+
+                <div
+                  className={`admin-dropzone ${isDragging ? "is-dragging" : ""}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
                   }}
-                />
-              </label>
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    appendFiles(e.dataTransfer.files);
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    multiple
+                    className="admin-file-input-hidden"
+                    onChange={(event) => {
+                      appendFiles(event.currentTarget.files);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                  <div className="admin-dropzone-icon">
+                    <UploadCloud size={24} />
+                  </div>
+                  <div className="admin-dropzone-text">
+                    <span className="admin-dropzone-cta">
+                      <strong>Choose Files</strong> or drag & drop here
+                    </span>
+                    <span className="admin-dropzone-sub">
+                      {5 - currentImages.length - selectedFiles.length > 0
+                        ? `${5 - currentImages.length - selectedFiles.length} slots remaining (${currentImages.length + selectedFiles.length}/5)`
+                        : "Maximum 5 images reached"}
+                    </span>
+                  </div>
+                </div>
+              </div>
               {(currentImages.length > 0 ||
                 selectedPreviews.length > 0 ||
                 (editingId && draft.imageUrl)) && (
@@ -343,7 +385,7 @@ export function AdminDashboard({
                           type="button"
                           onClick={() => setDraft({ ...draft, imageUrl: "" })}
                         >
-                          Remove current cover
+                          <Trash2 size={12} /> Remove cover
                         </button>
                       </div>
                     )}
@@ -359,7 +401,7 @@ export function AdminDashboard({
                         type="button"
                         onClick={() => removeCurrentImage(image)}
                       >
-                        Remove image
+                        <Trash2 size={12} /> Remove image
                       </button>
                     </div>
                   ))}
@@ -382,7 +424,7 @@ export function AdminDashboard({
                           )
                         }
                       >
-                        Remove {file.name}
+                        <Trash2 size={12} /> Remove
                       </button>
                     </div>
                   ))}

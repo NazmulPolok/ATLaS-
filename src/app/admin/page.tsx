@@ -13,7 +13,7 @@ export default async function AdminPage() {
   return (
     <AdminDashboard
       initialEntries={listEntries()}
-      initialInquiries={listInquiries()}
+      initialInquiries={await listInquiries()}
     />
   );
 }
