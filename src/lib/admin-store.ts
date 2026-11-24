@@ -32,6 +32,7 @@ export type Inquiry = {
   budget: string;
   timeline: string;
   description: string;
+  privacyAcknowledged: boolean;
   emailStatus: string;
   isRead: boolean;
   createdAt: string;
@@ -83,11 +84,19 @@ function database() {
       budget TEXT NOT NULL DEFAULT '',
       timeline TEXT NOT NULL DEFAULT '',
       description TEXT NOT NULL,
+      privacy_acknowledged INTEGER NOT NULL DEFAULT 0,
       email_status TEXT NOT NULL DEFAULT 'pending',
       is_read INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  const inquiryColumns = db.prepare("PRAGMA table_info(inquiries)").all() as {
+    name: string;
+  }[];
+  if (!inquiryColumns.some((column) => column.name === "privacy_acknowledged"))
+    db.exec(
+      "ALTER TABLE inquiries ADD COLUMN privacy_acknowledged INTEGER NOT NULL DEFAULT 0",
+    );
   globalForDatabase.atlasDatabase = db;
   return db;
 }
@@ -122,6 +131,7 @@ function inquiry(row: Record<string, unknown>): Inquiry {
     budget: String(row.budget),
     timeline: String(row.timeline),
     description: String(row.description),
+    privacyAcknowledged: Boolean(row.privacy_acknowledged),
     emailStatus: String(row.email_status),
     isRead: Boolean(row.is_read),
     createdAt: String(row.created_at),
@@ -136,14 +146,15 @@ export function saveInquiry(data: {
   budget: string;
   timeline: string;
   description: string;
+  privacyAcknowledged: boolean;
 }) {
   const result = database()
     .prepare(
       `INSERT INTO inquiries
-    (name,email,company,project_type,budget,timeline,description)
-    VALUES (@name,@email,@company,@projectType,@budget,@timeline,@description)`,
+    (name,email,company,project_type,budget,timeline,description,privacy_acknowledged)
+    VALUES (@name,@email,@company,@projectType,@budget,@timeline,@description,@privacyAcknowledged)`,
     )
-    .run(data);
+    .run({ ...data, privacyAcknowledged: data.privacyAcknowledged ? 1 : 0 });
   return Number(result.lastInsertRowid);
 }
 

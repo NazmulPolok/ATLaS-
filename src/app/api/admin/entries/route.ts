@@ -8,6 +8,11 @@ import {
   type UploadedImage,
 } from "@/lib/admin-store";
 import { entrySchema } from "@/lib/admin-entry-schema";
+import {
+  readLimitedBody,
+  readLimitedJson,
+  RequestBodyTooLargeError,
+} from "@/lib/request-security";
 
 export const runtime = "nodejs";
 const MAX_IMAGES = 5;
@@ -53,13 +58,21 @@ function rejectOrigin(request: NextRequest) {
 }
 
 async function readSubmission(request: NextRequest) {
-  const contentLength = Number(request.headers.get("content-length") || 0);
-  if (contentLength > MAX_TOTAL_BYTES + 512_000)
-    throw new Error(
-      "The image upload is too large. Use up to 5 images, 5 MB each.",
-    );
-
-  const form = await request.formData();
+  const body = await readLimitedBody(request, MAX_TOTAL_BYTES + 512_000);
+  const headers = new Headers(request.headers);
+  headers.delete("content-length");
+  headers.delete("transfer-encoding");
+  const boundedRequest = new Request(request.url, {
+    method: request.method,
+    headers,
+    body: new Blob([body]),
+  });
+  let form: FormData;
+  try {
+    form = await boundedRequest.formData();
+  } catch {
+    throw new Error("The upload form is invalid. Reload and try again.");
+  }
   const raw = {
     kind: form.get("kind"),
     title: form.get("title"),
@@ -135,11 +148,13 @@ function submissionError(error: unknown) {
   return NextResponse.json(
     {
       error:
-        error instanceof Error
+        error instanceof RequestBodyTooLargeError
+          ? "The image upload is too large. Use up to 5 images, 5 MB each."
+          : error instanceof Error
           ? error.message
           : "Could not save this entry. Try again.",
     },
-    { status: 400 },
+    { status: error instanceof RequestBodyTooLargeError ? 413 : 400 },
   );
 }
 
@@ -216,11 +231,11 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
+    body = await readLimitedJson(request, 4_096);
+  } catch (error) {
     return NextResponse.json(
       { error: "Entry id is required." },
-      { status: 400 },
+      { status: error instanceof RequestBodyTooLargeError ? 413 : 400 },
     );
   }
   const id = Number((body as { id?: unknown })?.id);
