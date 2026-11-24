@@ -45,6 +45,7 @@ export default function HomePage() {
           </div>
           <div
             className="hero-art"
+            role="img"
             aria-label="Abstract ATLaS digital engineering graphic"
           >
             <div className="art-topline">
@@ -66,6 +67,7 @@ export default function HomePage() {
                   alt=""
                   width={277}
                   height={324}
+                  priority
                 />
               </div>
               <span className="art-node node-a" />

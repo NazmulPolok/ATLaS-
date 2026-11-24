@@ -37,8 +37,8 @@ export function SiteFooter() {
                     <span
                       className="footer-social-disabled"
                       key={name}
+                      role="img"
                       aria-label={`${name} profile link not added yet`}
-                      aria-disabled="true"
                       title={`${name} link will be added later`}
                     >
                       <Icon size={16} aria-hidden="true" />
